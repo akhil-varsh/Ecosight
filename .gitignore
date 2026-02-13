@@ -1,1 +1,10 @@
 /sound
+
+# Git LFS metadata should remain trackable
+!.gitattributes
+!.lfsconfig
+
+# Ignore local LFS/cache artifacts
+**/.lfs-cache/
+**/.git/lfs/
+*.lfs.tmp

@@ -15,3 +15,12 @@ x86/
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !*.[Cc]ache/
+
+# Git LFS metadata should remain trackable
+!.gitattributes
+!.lfsconfig
+
+# Ignore local LFS/cache artifacts
+**/.lfs-cache/
+**/.git/lfs/
+*.lfs.tmp
