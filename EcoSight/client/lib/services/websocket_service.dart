@@ -1,10 +1,11 @@
 /// EcoSight — WebSocket Service
 /// Manages the connection to the Python server and streams incoming data.
+/// Uses dart:io WebSocket directly for reliable Android connectivity.
 library;
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:io';
 
 /// Data class for Phase 1 hazard alerts
 class HazardAlert {
@@ -52,9 +53,9 @@ class SceneDescription {
   bool get isDone => status == 'done';
 }
 
-/// WebSocket service that connects to the EcoSight Python server
+/// WebSocket service using dart:io WebSocket for reliable Android connectivity
 class WebSocketService {
-  WebSocketChannel? _channel;
+  WebSocket? _socket;
   final String serverUrl;
 
   // Stream controllers for different message types
@@ -74,23 +75,31 @@ class WebSocketService {
 
   WebSocketService({required this.serverUrl});
 
-  /// Connect to the EcoSight server
-  void connect() {
+  /// Connect to the EcoSight server using dart:io WebSocket
+  Future<void> connect() async {
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(serverUrl));
+      print('[WS] Connecting to $serverUrl ...');
+      _socket = await WebSocket.connect(serverUrl)
+          .timeout(const Duration(seconds: 5));
+
       _isConnected = true;
       _connectionController.add(true);
+      print('[WS] ✓ Connected to $serverUrl');
 
-      _channel!.stream.listen(
-        _onMessage,
+      // Listen for messages
+      _socket!.listen(
+        (data) {
+          _onMessage(data);
+        },
         onError: (error) {
-          print('[WS] Error: $error');
+          print('[WS] Stream error: $error');
           _handleDisconnect();
         },
         onDone: () {
-          print('[WS] Connection closed');
+          print('[WS] Stream done (code=${_socket?.closeCode})');
           _handleDisconnect();
         },
+        cancelOnError: true,
       );
 
       // Start ping every 5s to keep connection alive
@@ -98,10 +107,8 @@ class WebSocketService {
       _pingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _send({'type': 'ping'});
       });
-
-      print('[WS] Connected to $serverUrl');
     } catch (e) {
-      print('[WS] Connection failed: $e');
+      print('[WS] ✗ Connection FAILED: $e');
       _handleDisconnect();
     }
   }
@@ -112,8 +119,12 @@ class WebSocketService {
   }
 
   void _send(Map<String, dynamic> data) {
-    if (_isConnected && _channel != null) {
-      _channel!.sink.add(jsonEncode(data));
+    if (_isConnected && _socket != null) {
+      try {
+        _socket!.add(jsonEncode(data));
+      } catch (e) {
+        print('[WS] Send error: $e');
+      }
     }
   }
 
@@ -127,7 +138,7 @@ class WebSocketService {
       } else if (type == 'phase_2') {
         _sceneController.add(SceneDescription.fromJson(data));
       }
-      // ignore pong
+      // ignore pong — but it confirms connection is alive
     } catch (e) {
       print('[WS] Parse error: $e');
     }
@@ -137,6 +148,7 @@ class WebSocketService {
     _isConnected = false;
     _connectionController.add(false);
     _pingTimer?.cancel();
+    _socket = null;
 
     // Auto-reconnect after 3 seconds
     _reconnectTimer?.cancel();
@@ -149,7 +161,7 @@ class WebSocketService {
   void dispose() {
     _reconnectTimer?.cancel();
     _pingTimer?.cancel();
-    _channel?.sink.close();
+    _socket?.close();
     _hazardController.close();
     _sceneController.close();
     _connectionController.close();

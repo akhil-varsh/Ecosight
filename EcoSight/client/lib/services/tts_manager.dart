@@ -26,11 +26,17 @@ class TTSManager {
   /// Speak a short urgent Phase 1 alert.
   /// Example: "Person. 2 meters. Left."
   Future<void> speakAlert(String hazard, double distance, String direction) async {
-    // Don't interrupt important speech with another alert
-    if (_isSpeaking) return;
+    // Log current state
+    print('[TTS] speakAlert() called. isSpeaking=$_isSpeaking, hazard=$hazard, distance=$distance, direction=$direction');
+    
+    // Temporarily disabled guard to debug — allow overlapping speech
+    // if (_isSpeaking) return;
 
     final distStr = distance.toStringAsFixed(1);
-    final text = '$hazard. $distStr meters. $direction.';
+    final text = 'Detected $hazard towards your $direction at $distStr meters.';
+    
+    print('[TTS] >>> Calling _tts.speak("$text")');
+    await _tts.stop(); // Stop any previous speech first
     await _tts.speak(text);
   }
 

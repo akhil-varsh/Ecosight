@@ -4,9 +4,27 @@ Real-time hazard detection, depth estimation, and directionality.
 """
 
 import cv2
+import torch
 import numpy as np
 from ultralytics import YOLO
 import config
+from phase1_depth import DepthEstimator
+from phase1_tracker import TrackManager
+from phase1_freespace import FreeSpaceEstimator
+from phase1_guidance import PathGuidance
+
+# ─── PyTorch 2.6+ Safe Loading Fix ───────────────────────────
+# PyTorch 2.6+ defaults to weights_only=True, breaking YOLOv8 loading.
+# We monkey-patch torch.load to revert to old behavior (weights_only=False).
+_original_load = torch.load
+
+def _patched_load(*args, **kwargs):
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return _original_load(*args, **kwargs)
+
+torch.load = _patched_load
+# ─────────────────────────────────────────────────────────────
 
 
 class ReflexLayer:
@@ -18,6 +36,14 @@ class ReflexLayer:
         self.focal_constant = config.FOCAL_CONSTANT
         self.confidence_threshold = config.YOLO_CONFIDENCE_THRESHOLD
         self.hazard_classes = config.HAZARD_CLASSES
+        self.device = 0 if torch.cuda.is_available() else "cpu"
+        self.imgsz = config.PHASE1_IMGSZ
+        self.max_det = config.PHASE1_MAX_DETECTIONS
+
+        self.depth = DepthEstimator(config.PHASE1_DEPTH_BACKEND, self.focal_constant)
+        self.tracker = TrackManager(config.PHASE1_TRACKER_BACKEND)
+        self.freespace = FreeSpaceEstimator(config.PHASE1_FREE_SPACE_BACKEND)
+        self.guidance = PathGuidance()
         print("[Phase1] YOLOv8 model loaded ✓")
 
     # ── Public API ─────────────────────────────────────────────
@@ -27,8 +53,17 @@ class ReflexLayer:
         Each hazard dict:
             { "hazard": str, "direction": str, "distance": float, "confidence": float }
         """
-        results = self.model(frame, verbose=False, conf=self.confidence_threshold)
-        detections = []
+        results = self.model(
+            frame,
+            verbose=False,
+            conf=self.confidence_threshold,
+            imgsz=self.imgsz,
+            max_det=self.max_det,
+            device=self.device,
+        )
+        detections: list[dict] = []
+        raw_boxes: list[list[int]] = []
+        raw_meta: list[tuple[str, str, float]] = []
 
         for result in results:
             boxes = result.boxes
@@ -44,14 +79,32 @@ class ReflexLayer:
 
                 hazard_name = self.hazard_classes[cls_id]
                 direction = self._get_direction(x1, x2, frame.shape[1])
-                distance = self._estimate_distance(y1, y2)
+                raw_boxes.append([int(x1), int(y1), int(x2), int(y2)])
+                raw_meta.append((hazard_name, direction, conf))
 
-                detections.append({
-                    "hazard": hazard_name,
-                    "direction": direction,
-                    "distance": round(distance, 1),
-                    "confidence": round(conf, 2),
-                })
+        if not raw_boxes:
+            return []
+
+        distances = self.depth.estimate_distances(frame, raw_boxes)
+        for idx, box in enumerate(raw_boxes):
+            hazard_name, direction, conf = raw_meta[idx]
+            detections.append({
+                "hazard": hazard_name,
+                "direction": direction,
+                "distance": round(float(distances[idx]), 1),
+                "confidence": round(float(conf), 2),
+                "box": box,
+            })
+
+        # Assign stable track IDs
+        detections = self.tracker.assign_ids(detections)
+
+        # Free-space + guidance phrase per detection
+        lane_scores = self.freespace.lane_scores(frame.shape, detections)
+        for det in detections:
+            move_lane, guidance_text = self.guidance.choose_move(det["direction"], lane_scores)
+            det["recommended_lane"] = move_lane
+            det["guidance"] = guidance_text
 
         # Sort by distance — closest hazard first
         detections.sort(key=lambda d: d["distance"])

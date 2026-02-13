@@ -9,9 +9,31 @@ class SpatialAudioManager {
   final AudioPlayer _player = AudioPlayer();
 
   Future<void> init() async {
-    // Pre-configure
+    try {
+      // Configure global audio context for notifications/accessibility
+      await AudioPlayer.global.setAudioContext(AudioContext(
+        android: AudioContextAndroid(
+          isSpeakerphoneOn: false,
+          stayAwake: false,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.assistanceSonification,
+          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: {
+            AVAudioSessionOptions.mixWithOthers,
+            AVAudioSessionOptions.duckOthers,
+          },
+        ),
+      ));
+    } catch (e) {
+      print('[AUDIO] AudioContext config failed (non-fatal): $e');
+    }
+
+    // Pre-configure player
     await _player.setReleaseMode(ReleaseMode.stop);
-    await _player.setVolume(0.8);
+    await _player.setVolume(1.0);
   }
 
   /// Play a warning beep with directional panning.

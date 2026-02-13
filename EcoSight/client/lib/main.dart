@@ -4,7 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/home_screen.dart';
+import 'screens/app_shell.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,24 +20,24 @@ class EcoSightApp extends StatelessWidget {
       title: 'EcoSight',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A0E21),
-        primaryColor: const Color(0xFF00E5FF),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00E5FF),
-          secondary: Color(0xFF00E676),
-          surface: Color(0xFF1A1F36),
-          error: Color(0xFFFF5252),
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+        primaryColor: const Color(0xFF6C63FF),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF6C63FF),
+          secondary: Color(0xFF00D9A6),
+          surface: Colors.white,
+          error: Color(0xFFFF6B6B),
         ),
-        textTheme: GoogleFonts.interTextTheme(
-          ThemeData.dark().textTheme,
+        textTheme: GoogleFonts.poppinsTextTheme(
+          ThemeData.light().textTheme,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
       ),
-      home: const HomeScreen(),
+      home: const AppShell(),
     );
   }
 }

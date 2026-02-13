@@ -31,10 +31,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   HazardAlert? _lastHazard;
   String? _sceneDescription;
   bool _isProcessingPhase2 = false;
+  int _msgCount = 0;  // DEBUG: count received messages
+  String _lastRawMsg = 'No messages yet';  // DEBUG: last raw message
 
-  // ─── Server Config ─────────────────────────────────────────
+  // ─── Server Config [WS] Server listening on ws://0.0.0.0:8765
+  // [WS] Connect app to: 172.16.29.236 : 8765─────────────────────────────────────────
   final TextEditingController _ipController =
-      TextEditingController(text: '192.168.1.100');
+      TextEditingController(text: '127.0.0.1');
   final TextEditingController _portController =
       TextEditingController(text: '8765');
 
@@ -67,32 +70,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await _audio.init();
   }
 
-  void _connectToServer() {
+  void _connectToServer() async {
     final url = 'ws://${_ipController.text}:${_portController.text}';
+    print('[Home] Connecting to: $url');
+    setState(() => _lastRawMsg = 'Connecting to $url ...');
+    
     _ws = WebSocketService(serverUrl: url);
 
     _connSub = _ws!.connectionStream.listen((connected) {
-      setState(() => _isConnected = connected);
+      setState(() {
+        _isConnected = connected;
+        _lastRawMsg = connected 
+            ? 'CONNECTED to $url — waiting for data...'
+            : 'CONNECT FAILED — is server running? URL: $url';
+      });
       if (connected) {
         _tts.speakStatus('Connected to EcoSight server');
         _haptic.pulseLight();
       } else {
-        _tts.speakStatus('Connection lost. Reconnecting.');
+        _tts.speakStatus('Connection failed.');
       }
     });
 
     _hazardSub = _ws!.hazardStream.listen(_onHazard);
     _sceneSub = _ws!.sceneStream.listen(_onScene);
 
-    _ws!.connect();
+    await _ws!.connect();
     setState(() => _currentMode = 'phase_1');
   }
 
   // ─── Phase 1 Handler ──────────────────────────────────────
   void _onHazard(HazardAlert alert) {
+    _msgCount++;
+    final raw = 'MSG#$_msgCount | ${alert.hazard ?? "clear"} | ${alert.direction ?? "-"} | ${alert.distance?.toStringAsFixed(1) ?? "-"}m';
+    print('[Home] $raw');
+    
     setState(() {
       _lastHazard = alert;
       _currentMode = 'phase_1';
+      _lastRawMsg = raw;
     });
 
     if (alert.hasHazard) {
@@ -102,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
 
       // Spatial audio beep in the correct direction
+      print('[Home] Playing warning beep: ${alert.direction}'); // DEBUG LOG
       _audio.playWarningBeep(alert.direction ?? 'center');
 
       // Haptic feedback based on distance
@@ -288,6 +305,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         children: [
           _buildHeader(),
+          // ── DEBUG BANNER ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: const Color(0xFFFFD600),
+            child: Text(
+              _lastRawMsg,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
           Expanded(child: _buildStatusArea()),
           _buildPhase2Button(),
           const SizedBox(height: 16),

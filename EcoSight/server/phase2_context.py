@@ -20,24 +20,45 @@ class ContextLayer:
         self.model = None
         self.processor = None
         self._loaded = False
+        self._load_error: str | None = None
 
     def load_model(self):
         """Lazily load Florence-2 (heavy model — only when needed)."""
         if self._loaded:
             return
+        if self._load_error is not None:
+            raise RuntimeError(self._load_error)
         print(f"[Phase2] Loading Florence-2 on {self.device}...")
         model_id = config.FLORENCE2_MODEL_ID
 
-        self.processor = AutoProcessor.from_pretrained(
-            model_id, trust_remote_code=True
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_id, trust_remote_code=True,
-            torch_dtype=self.dtype,
-        ).to(self.device)
-        self.model.eval()
-        self._loaded = True
-        print("[Phase2] Florence-2 loaded ✓")
+        try:
+            # Default processor mode works with Florence local snapshot on pinned deps.
+            self.processor = AutoProcessor.from_pretrained(
+                model_id,
+                trust_remote_code=True,
+            )
+        except Exception as e:
+            print(f"[Phase2] Default processor load failed, trying slow tokenizer fallback: {e}")
+            self.processor = AutoProcessor.from_pretrained(
+                model_id,
+                trust_remote_code=True,
+                use_fast=False,
+            )
+
+        try:
+
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_id, trust_remote_code=True,
+                torch_dtype=self.dtype,
+            ).to(self.device)
+            self.model.eval()
+            self._loaded = True
+            self._load_error = None
+            print("[Phase2] Florence-2 loaded ✓")
+        except Exception as e:
+            self._load_error = f"Florence-2 load failed: {e}"
+            print(f"[Phase2] {self._load_error}")
+            raise
 
     def _run_task(self, image: Image.Image, task: str, text_input: str = "") -> str:
         """Run a Florence‑2 task and return decoded text."""
