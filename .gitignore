@@ -8,3 +8,8 @@
 **/.lfs-cache/
 **/.git/lfs/
 *.lfs.tmp
+
+# Python virtual environments
+**/.venv/
+**/venv/
+**/env/
