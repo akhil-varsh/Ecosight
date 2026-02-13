@@ -30,6 +30,9 @@ from phase2_context import ContextLayer
 from debounce import HazardDebouncer
 from schema import build_phase1_payload, build_phase2_payload, build_pong
 
+HEADLESS_MODE = os.getenv("ECOSIGHT_HEADLESS", "0") == "1"
+SERVER_ONLY_MODE = os.getenv("ECOSIGHT_SERVER_ONLY", "0") == "1"
+
 
 # ─── Shared State ────────────────────────────────────────────────
 class ServerState:
@@ -42,13 +45,10 @@ class ServerState:
 
 
 state = ServerState()
-camera = CameraManager()
-reflex = ReflexLayer()
-context = ContextLayer()
-debouncer = HazardDebouncer()
-
-HEADLESS_MODE = os.getenv("ECOSIGHT_HEADLESS", "0") == "1"
-SERVER_ONLY_MODE = os.getenv("ECOSIGHT_SERVER_ONLY", "0") == "1"
+camera = CameraManager() if not SERVER_ONLY_MODE else None
+reflex = ReflexLayer() if not SERVER_ONLY_MODE else None
+context = None
+debouncer = HazardDebouncer() if not SERVER_ONLY_MODE else None
 
 # ─── Server-Side TTS (runs on laptop speakers) ──────────────────
 import queue
@@ -272,6 +272,15 @@ async def broadcast(payload: dict):
 # ─── Phase 1 Loop ────────────────────────────────────────────────
 async def phase1_loop():
     """Continuously capture frames, run detection, and broadcast."""
+    global camera, reflex, debouncer
+
+    if camera is None:
+        camera = CameraManager()
+    if reflex is None:
+        reflex = ReflexLayer()
+    if debouncer is None:
+        debouncer = HazardDebouncer()
+
     target_interval = 1.0 / config.PHASE1_TARGET_FPS
     frames_processed = 0
     start_time = time.perf_counter()
@@ -504,6 +513,11 @@ async def phase1_loop():
 # ─── Phase 2 Handler ─────────────────────────────────────────────
 async def handle_phase2(frame: np.ndarray):
     """Run Florence-2 scene description on the current frame."""
+    global context
+
+    if context is None:
+        context = ContextLayer()
+
     print("[Phase2] Processing scene description...")
 
     await broadcast(build_phase2_payload(status="processing"))
@@ -533,10 +547,16 @@ async def main():
     if SERVER_ONLY_MODE:
         print("[Server] Running in server-only mode (no camera, no OpenCV output)")
     else:
+        global camera
+        if camera is None:
+            camera = CameraManager()
         camera.open()
 
     # Optional Phase-2 preload (disabled by default to protect Phase-1 latency)
     if config.PHASE2_PRELOAD_ON_START:
+        global context
+        if context is None:
+            context = ContextLayer()
         loop = asyncio.get_event_loop()
         preload_future = asyncio.ensure_future(
             loop.run_in_executor(None, context.load_model)
