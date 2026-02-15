@@ -3,6 +3,7 @@
 library;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 class SpatialAudioManager {
   // We use separate players for left/right panning
@@ -28,7 +29,7 @@ class SpatialAudioManager {
         ),
       ));
     } catch (e) {
-      print('[AUDIO] AudioContext config failed (non-fatal): $e');
+      debugPrint('[AUDIO] AudioContext config failed (non-fatal): $e');
     }
 
     // Pre-configure player
@@ -63,7 +64,7 @@ class SpatialAudioManager {
         volume: 0.8,
       );
     } catch (e) {
-      print('[AUDIO] Error playing beep: $e');
+      debugPrint('[AUDIO] Error playing beep: $e');
     }
   }
 
@@ -73,8 +74,14 @@ class SpatialAudioManager {
       await _player.setBalance(0.0);
       await _player.play(AssetSource('notification.wav'), volume: 0.5);
     } catch (e) {
-      print('[AUDIO] Error playing notification: $e');
+      debugPrint('[AUDIO] Error playing notification: $e');
     }
+  }
+
+  Future<void> stop() async {
+    try {
+      await _player.stop();
+    } catch (_) {}
   }
 
   void dispose() {

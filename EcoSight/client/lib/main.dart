@@ -2,12 +2,21 @@
 /// Assistive vision app for visually impaired navigation.
 library;
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'firebase_options.dart';
 import 'screens/app_shell.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('[Firebase] Initialization skipped/failed: $e');
+  }
   runApp(const EcoSightApp());
 }
 

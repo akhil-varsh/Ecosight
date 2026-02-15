@@ -12,4 +12,13 @@ einops>=0.8.0
 Pillow>=10.0.0
 websockets>=12.0
 numpy==1.26.4
+twilio>=9.0.0
 streamlit>=1.37.0
+tensorflow<=2.13.1 
+onnx>=1.12.0 
+onnx2tf
+sng4onnx>=1.0.1
+onnxsim>=0.4.33
+onnx_graphsurgeon>=0.3.26
+tflite_support
+onnxruntime

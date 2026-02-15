@@ -1,6 +1,7 @@
 """
 EcoSight Server Configuration
 """
+import os
 
 # ─── Server ──────────────────────────────────────────────────────
 WEBSOCKET_HOST = "0.0.0.0"
@@ -122,3 +123,18 @@ FLORENCE2_TASKS = {
     "ocr": "<OCR>",
     "od": "<OD>",
 }
+
+# ─── Connection Watchdog / Guardian Alert ─────────────────────────
+# When the phone loses connection and can't reconnect within the
+# watchdog windows, the server sends an SMS to the guardian.
+WATCHDOG_RECONNECT_WINDOW_SEC = 15      # seconds to wait per retry window
+WATCHDOG_MAX_RECONNECT_ATTEMPTS = 3     # failures before SMS fires
+
+# Twilio credentials (set via env vars or hardcode for demo)
+TWILIO_ACCOUNT_SID  = os.getenv("TWILIO_ACCOUNT_SID", "AC08854d517d4c0ba1775cec4e96b47fa0")
+TWILIO_AUTH_TOKEN    = os.getenv("TWILIO_AUTH_TOKEN", "0e27c4d019e48f41931c467856e569b8")
+TWILIO_FROM_NUMBER   = os.getenv("TWILIO_FROM_NUMBER", "+18723501845")
+
+# Guardian / Emergency contact
+GUARDIAN_PHONE_NUMBER = os.getenv("GUARDIAN_PHONE_NUMBER", "+918523072687")
+USER_DISPLAY_NAME     = os.getenv("ECOSIGHT_USER_NAME", "EcoSight User")

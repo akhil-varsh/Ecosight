@@ -1,11 +1,19 @@
 /// EcoSight — WebSocket Service
 /// Manages the connection to the Python server and streams incoming data.
 /// Uses dart:io WebSocket directly for reliable Android connectivity.
+///
+/// Guardian Safety:
+///   Sends GPS location with every ping so the server always has a recent
+///   position.  If the connection drops, the server-side watchdog starts
+///   counting failures and after 3 consecutive missed windows it fires
+///   an SMS to the guardian via Twilio.
 library;
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:geolocator/geolocator.dart';
 
 /// Data class for Phase 1 hazard alerts
 class HazardAlert {
@@ -72,17 +80,30 @@ class WebSocketService {
 
   Timer? _reconnectTimer;
   Timer? _pingTimer;
+  Timer? _locationTimer;
+
+  /// Number of consecutive failed reconnection attempts since last good connection
+  int _reconnectAttempts = 0;
+  int get reconnectAttempts => _reconnectAttempts;
+
+  /// Maximum reconnect attempts before we consider the connection critically lost
+  static const int maxReconnectAttempts = 3;
+
+  /// Last known GPS position (sent with every ping for server-side watchdog)
+  double? _lastLatitude;
+  double? _lastLongitude;
 
   WebSocketService({required this.serverUrl});
 
   /// Connect to the EcoSight server using dart:io WebSocket
   Future<void> connect() async {
     try {
-      print('[WS] Connecting to $serverUrl ...');
+      print('[WS] Connecting to $serverUrl ... (attempt ${_reconnectAttempts + 1})');
       _socket = await WebSocket.connect(serverUrl)
           .timeout(const Duration(seconds: 5));
 
       _isConnected = true;
+      _reconnectAttempts = 0; // reset on successful connection
       _connectionController.add(true);
       print('[WS] ✓ Connected to $serverUrl');
 
@@ -102,11 +123,15 @@ class WebSocketService {
         cancelOnError: true,
       );
 
-      // Start ping every 5s to keep connection alive
+      // Start ping every 5s — includes GPS for the server-side watchdog
       _pingTimer?.cancel();
       _pingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        _send({'type': 'ping'});
+        _sendPingWithLocation();
       });
+
+      // Start a background GPS updater every 10s so we always have fresh coords
+      _startLocationUpdates();
+
     } catch (e) {
       print('[WS] ✗ Connection FAILED: $e');
       _handleDisconnect();
@@ -148,19 +173,71 @@ class WebSocketService {
     _isConnected = false;
     _connectionController.add(false);
     _pingTimer?.cancel();
+    _locationTimer?.cancel();
     _socket = null;
 
-    // Auto-reconnect after 3 seconds
+    _reconnectAttempts++;
+    print('[WS] Reconnect attempt $_reconnectAttempts / $maxReconnectAttempts');
+
+    if (_reconnectAttempts >= maxReconnectAttempts) {
+      // At this point the server-side watchdog will also fire the SMS.
+      // On the client we just log — the server handles the Twilio alert.
+      print('[WS] ⚠️  Max reconnect attempts reached — server will alert guardian');
+    }
+
+    // Keep trying to reconnect (exponential back-off capped at 15s)
+    final delay = Duration(
+      seconds: (_reconnectAttempts <= 3) ? 3 * _reconnectAttempts : 15,
+    );
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+    _reconnectTimer = Timer(delay, () {
       print('[WS] Attempting reconnect...');
       connect();
     });
   }
 
+  // ── GPS helpers ───────────────────────────────────────────────
+
+  void _startLocationUpdates() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await _refreshLocation();
+    });
+    // Also grab location immediately
+    _refreshLocation();
+  }
+
+  Future<void> _refreshLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return; // can't get location — server will note "unavailable"
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      _lastLatitude = pos.latitude;
+      _lastLongitude = pos.longitude;
+    } catch (e) {
+      // Silently ignore — previous coords remain valid
+    }
+  }
+
+  void _sendPingWithLocation() {
+    final payload = <String, dynamic>{'type': 'ping'};
+    if (_lastLatitude != null && _lastLongitude != null) {
+      payload['latitude'] = _lastLatitude;
+      payload['longitude'] = _lastLongitude;
+    }
+    _send(payload);
+  }
+
   void dispose() {
     _reconnectTimer?.cancel();
     _pingTimer?.cancel();
+    _locationTimer?.cancel();
     _socket?.close();
     _hazardController.close();
     _sceneController.close();

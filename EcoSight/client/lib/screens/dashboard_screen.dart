@@ -3,30 +3,255 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'guardian_safety_test_screen.dart';
+import 'maps_navigation_v1_screen.dart';
+import 'remote_camera_demo_v1_screen.dart';
+import 'voice_agent_v1_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 24),
-            _buildStatsRow(),
-            const SizedBox(height: 24),
-            _buildPathTrackingCard(),
-            const SizedBox(height: 20),
-            _buildDetectedObjectsList(),
-            const SizedBox(height: 20),
-            _buildActivityTimeline(),
-          ],
+    return Scaffold(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0), // move up by 80px
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const GuardianSafetyTestScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.shield_rounded),
+          label: const Text('Guardian Safety'),
+          backgroundColor: Color(0xFF6C63FF),
         ),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 24),
+              _buildStatsRow(),
+              const SizedBox(height: 16),
+              _buildRemoteCameraDemoCard(context),
+              const SizedBox(height: 12),
+              _buildVoiceAgentCard(context),
+              const SizedBox(height: 12),
+              _buildMapsNavCard(context),
+              const SizedBox(height: 12),
+              _buildGuardianSafetyCard(context),
+              const SizedBox(height: 24),
+              _buildPathTrackingCard(),
+              const SizedBox(height: 20),
+              _buildDetectedObjectsList(),
+              const SizedBox(height: 20),
+              _buildActivityTimeline(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoiceAgentCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAFBF4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.record_voice_over_rounded,
+              color: Color(0xFF00A870),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Voice Agent v1',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1D2E),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Voice orchestration for location, weather, and calls',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8E95A9)),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const VoiceAgentV1Screen(),
+                ),
+              );
+            },
+            child: const Text('Open'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapsNavCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F0FE),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.map_rounded,
+              color: Color(0xFF4285F4),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Maps & Navigation',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1D2E),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Search places, get walking directions on the map',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8E95A9)),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const MapsNavigationV1Screen(),
+                ),
+              );
+            },
+            child: const Text('Open'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuardianSafetyCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.shield_rounded,
+              color: Color(0xFFF59E0B),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Guardian Safety',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1D2E),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Test connection-loss SMS alerts to guardian',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8E95A9)),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GuardianSafetyTestScreen(),
+                ),
+              );
+            },
+            child: const Text('Test'),
+          ),
+        ],
       ),
     );
   }
@@ -206,7 +431,10 @@ class DashboardScreen extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -267,23 +495,113 @@ class DashboardScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Start', style: TextStyle(color: Colors.white60, fontSize: 11)),
-              const Text('Gate 2', style: TextStyle(color: Colors.white60, fontSize: 11)),
-              const Text('Café', style: TextStyle(color: Colors.white60, fontSize: 11)),
-              Text('Library', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
+              const Text(
+                'Start',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              const Text(
+                'Gate 2',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              const Text(
+                'Café',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              Text(
+                'Library',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.straighten_rounded, color: Colors.white70, size: 16),
+              const Icon(
+                Icons.straighten_rounded,
+                color: Colors.white70,
+                size: 16,
+              ),
               const SizedBox(width: 6),
-              const Text('320m walked', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const Text(
+                '320m walked',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
               const SizedBox(width: 20),
               const Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
               const SizedBox(width: 6),
-              const Text('8 min', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const Text(
+                '8 min',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRemoteCameraDemoCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF1FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.camera_alt_rounded,
+              color: Color(0xFF6C63FF),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Remote Camera Contract v1',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1D2E),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Isolated demo for phone camera streaming',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8E95A9)),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RemoteCameraDemoV1Screen(),
+                ),
+              );
+            },
+            child: const Text('Open'),
           ),
         ],
       ),
@@ -327,10 +645,38 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildDetectedObjectsList() {
     final detections = [
-      {'object': 'Person', 'dir': 'Center', 'dist': '1.2m', 'time': '2s ago', 'icon': Icons.person, 'color': const Color(0xFFFF6B6B)},
-      {'object': 'Chair', 'dir': 'Left', 'dist': '2.5m', 'time': '5s ago', 'icon': Icons.chair, 'color': const Color(0xFFFFB547)},
-      {'object': 'Bicycle', 'dir': 'Right', 'dist': '3.8m', 'time': '12s ago', 'icon': Icons.pedal_bike, 'color': const Color(0xFF00D9A6)},
-      {'object': 'Bottle', 'dir': 'Center', 'dist': '0.8m', 'time': '18s ago', 'icon': Icons.local_drink, 'color': const Color(0xFF6C63FF)},
+      {
+        'object': 'Person',
+        'dir': 'Center',
+        'dist': '1.2m',
+        'time': '2s ago',
+        'icon': Icons.person,
+        'color': const Color(0xFFFF6B6B),
+      },
+      {
+        'object': 'Chair',
+        'dir': 'Left',
+        'dist': '2.5m',
+        'time': '5s ago',
+        'icon': Icons.chair,
+        'color': const Color(0xFFFFB547),
+      },
+      {
+        'object': 'Bicycle',
+        'dir': 'Right',
+        'dist': '3.8m',
+        'time': '12s ago',
+        'icon': Icons.pedal_bike,
+        'color': const Color(0xFF00D9A6),
+      },
+      {
+        'object': 'Bottle',
+        'dir': 'Center',
+        'dist': '0.8m',
+        'time': '18s ago',
+        'icon': Icons.local_drink,
+        'color': const Color(0xFF6C63FF),
+      },
     ];
 
     return Column(
@@ -393,7 +739,11 @@ class DashboardScreen extends StatelessWidget {
               color: (d['color'] as Color).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(d['icon'] as IconData, color: d['color'] as Color, size: 22),
+            child: Icon(
+              d['icon'] as IconData,
+              color: d['color'] as Color,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

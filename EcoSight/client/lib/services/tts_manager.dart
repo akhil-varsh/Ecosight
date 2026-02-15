@@ -13,30 +13,25 @@ class TTSManager {
     await _tts.setSpeechRate(0.55); // Slightly fast for urgency
     await _tts.setPitch(1.0);
     await _tts.setVolume(1.0);
+    await _tts.awaitSpeakCompletion(false);
 
     _tts.setStartHandler(() => _isSpeaking = true);
     _tts.setCompletionHandler(() => _isSpeaking = false);
     _tts.setCancelHandler(() => _isSpeaking = false);
     _tts.setErrorHandler((msg) {
       _isSpeaking = false;
-      print('[TTS] Error: $msg');
     });
   }
 
   /// Speak a short urgent Phase 1 alert.
   /// Example: "Person. 2 meters. Left."
   Future<void> speakAlert(String hazard, double distance, String direction) async {
-    // Log current state
-    print('[TTS] speakAlert() called. isSpeaking=$_isSpeaking, hazard=$hazard, distance=$distance, direction=$direction');
-    
-    // Temporarily disabled guard to debug — allow overlapping speech
-    // if (_isSpeaking) return;
+    if (_isSpeaking) {
+      return;
+    }
 
     final distStr = distance.toStringAsFixed(1);
     final text = 'Detected $hazard towards your $direction at $distStr meters.';
-    
-    print('[TTS] >>> Calling _tts.speak("$text")');
-    await _tts.stop(); // Stop any previous speech first
     await _tts.speak(text);
   }
 

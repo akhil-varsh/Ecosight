@@ -29,6 +29,7 @@ from phase1_reflex import ReflexLayer
 from phase2_context import ContextLayer
 from debounce import HazardDebouncer
 from schema import build_phase1_payload, build_phase2_payload, build_pong
+from connection_watchdog import ConnectionWatchdog
 
 HEADLESS_MODE = os.getenv("ECOSIGHT_HEADLESS", "0") == "1"
 SERVER_ONLY_MODE = os.getenv("ECOSIGHT_SERVER_ONLY", "0") == "1"
@@ -49,6 +50,7 @@ camera = CameraManager() if not SERVER_ONLY_MODE else None
 reflex = ReflexLayer() if not SERVER_ONLY_MODE else None
 context = None
 debouncer = HazardDebouncer() if not SERVER_ONLY_MODE else None
+watchdog = ConnectionWatchdog()
 
 # ─── Server-Side TTS (runs on laptop speakers) ──────────────────
 import queue
@@ -239,6 +241,9 @@ async def ws_handler(websocket):
     client_addr = websocket.remote_address
     print(f"[WS] Client connected: {client_addr}")
 
+    # Register with the connection watchdog (resets failure counters on reconnect)
+    watchdog.register(websocket)
+
     try:
         async for message in websocket:
             data = json.loads(message)
@@ -249,13 +254,29 @@ async def ws_handler(websocket):
                 state.phase2_requested = True
 
             elif msg_type == "ping":
+                # Update watchdog heartbeat (with optional GPS)
+                watchdog.heartbeat(
+                    websocket,
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                )
                 await websocket.send(json.dumps(build_pong()))
+
+            elif msg_type == "location_update":
+                # Dedicated location message from client
+                watchdog.heartbeat(
+                    websocket,
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                )
 
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
         state.clients.discard(websocket)
         print(f"[WS] Client disconnected: {client_addr}")
+        # Notify watchdog — starts the reconnect-failure countdown
+        watchdog.on_disconnect(websocket)
 
 
 async def broadcast(payload: dict):
